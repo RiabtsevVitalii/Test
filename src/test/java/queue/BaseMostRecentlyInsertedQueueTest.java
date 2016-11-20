@@ -35,9 +35,44 @@ public abstract class BaseMostRecentlyInsertedQueueTest extends JSR166TestCase {
         assertNull(queue.poll());
     }
 
+    public void testEmpty() {
+        Queue q = emptyCollection(Integer.MAX_VALUE);
+        assertTrue(q.isEmpty());
+        q.offer(one);
+        assertFalse(q.isEmpty());
+        q.offer(two);
+        q.remove();
+        q.remove();
+        assertTrue(q.isEmpty());
+    }
+
+    public void testSize() {
+        Queue q = emptyCollection(SIZE);
+        for (int i = 0; i < SIZE; ++i) {
+            assertEquals(i, q.size());
+            q.offer(new Integer(i));
+        }
+        for (int i = 0; i < SIZE; ++i) {
+            assertEquals(SIZE - i, q.size());
+            q.remove();
+        }
+
+    }
+
     public void testPeekFromEmptyQueue() {
         Queue queue = emptyCollection(1);
         assertNull(queue.peek());
+    }
+
+    public void testSizeOfEmptyQueue() {
+        assertEquals(0, emptyCollection(1).size());
+    }
+
+    public void testOffer() {
+        ConcurrentMostRecentlyInsertedQueue q = new ConcurrentMostRecentlyInsertedQueue(2);
+        assertTrue(q.offer(zero));
+        assertTrue(q.offer(one));
+        assertTrue(q.offer(three));
     }
 
     public void testOfferPollPeek() {

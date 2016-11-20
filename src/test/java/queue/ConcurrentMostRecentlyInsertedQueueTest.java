@@ -1,115 +1,298 @@
 package queue;
 
-import org.junit.Test;
+import junit.framework.Test;
 
-import java.util.Iterator;
-import java.util.NoSuchElementException;
+import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
-import static org.junit.Assert.*;
+public class ConcurrentMostRecentlyInsertedQueueTest extends JSR166TestCase {
 
-/**
- * Created by VitaliiRiabtsev on 11/17/2016.
- */
-public class ConcurrentMostRecentlyInsertedQueueTest {
-    @Test(expected = IllegalArgumentException.class)
-    public void instantQueueWithIllegalCapacity() {
-        new ConcurrentMostRecentlyInsertedQueue(0);
+    public static class Bounded extends BaseMostRecentlyInsertedQueueTest {
+        @Override
+        protected Queue emptyCollection(int capacity) {
+            return new ConcurrentMostRecentlyInsertedQueue(capacity);
+        }
     }
 
-    @Test
-    public void instantQueueWithNormalCapacity() {
-        assertNotNull(new ConcurrentMostRecentlyInsertedQueue(1));
+    public static void main(String[] args) {
+        main(suite(), args);
     }
 
-    @Test
-    public void sizeOfEmptyQueue() {
-        ConcurrentMostRecentlyInsertedQueue<String> queue = new ConcurrentMostRecentlyInsertedQueue<>(1);
-        int expectSize = 0;
-        assertEquals(expectSize, queue.size());
+    public static Test suite() {
+        class Implementation implements CollectionImplementation {
+            public Class<?> klazz() {
+                return ConcurrentMostRecentlyInsertedQueue.class;
+            }
+
+            public Collection emptyCollection() {
+                return new ConcurrentMostRecentlyInsertedQueue(Integer.MAX_VALUE);
+            }
+
+            public Object makeElement(int i) {
+                return i;
+            }
+
+            public boolean isConcurrent() {
+                return true;
+            }
+
+            public boolean permitsNulls() {
+                return false;
+            }
+        }
+        return newTestSuite(ConcurrentMostRecentlyInsertedQueueTest.class,
+                new Bounded().testSuite(),
+                CollectionTest.testSuite(new Implementation()));
     }
 
-    @Test(expected = NullPointerException.class)
-    public void offerNullValue() {
-        int capacity = 1;
-        ConcurrentMostRecentlyInsertedQueue<String> queue = new ConcurrentMostRecentlyInsertedQueue<>(capacity);
-        queue.offer(null);
+    /**
+     * Returns a new queue of given size containing consecutive
+     * Integers 0 ... n - 1.
+     */
+    private ConcurrentMostRecentlyInsertedQueue<Integer> populatedQueue(int n) {
+        ConcurrentMostRecentlyInsertedQueue<Integer> q = new ConcurrentMostRecentlyInsertedQueue<>(n);
+        assertTrue(q.isEmpty());
+        for (int i = 0; i < n; ++i)
+            assertTrue(q.offer(new Integer(i)));
+        assertFalse(q.isEmpty());
+        assertEquals(n, q.size());
+        assertEquals((Integer) 0, q.peek());
+        return q;
     }
 
-    @Test
-    public void offer() {
-        int capacity = 2;
-        ConcurrentMostRecentlyInsertedQueue<String> queue = new ConcurrentMostRecentlyInsertedQueue<>(capacity);
+    public void testConstructor1() {
+        try {
+            new MostRecentlyInsertedQueue(0);
+            shouldThrow();
+        } catch (IllegalArgumentException success) {
 
-        //offer first element with value="first". expecting size=1, expecting return value="first" by peek()
-        int expectSize = 1;
-        String item1 = "first";
-        assertTrue(queue.offer(item1));
-        assertEquals(expectSize, queue.size());
-        assertEquals(item1, queue.peek());
-
-        //offer second element with value="second". expecting size=2, expecting return value="first" by peek()
-        expectSize = 2;
-        String item2 = "second";
-        assertTrue(queue.offer(item2));
-        assertEquals(expectSize, queue.size());
-        assertEquals(item1, queue.peek());
-
-        //offer third element with value="third". expecting size=2, expecting return value="second" by peek()
-        expectSize = 2;
-        String item3 = "third";
-        assertTrue(queue.offer(item3));
-        assertEquals(expectSize, queue.size());
-        assertEquals(item2, queue.peek());
-
-        //expecting return value="second" by poll(), expecting return value="third" by peek(), expecting size=1
-        expectSize = 1;
-        assertEquals(item2, queue.poll());
-        assertEquals(item3, queue.peek());
-        assertEquals(expectSize, queue.size());
-
-        //clear queue, expecting return value=NULL by peek(), expecting return value=NULL by poll(),expecting size=0
-        expectSize = 0;
-        queue.clear();
-        assertEquals(expectSize, queue.size());
-        assertNull(queue.peek());
-        assertNull(queue.poll());
+        }
     }
 
-    @Test(expected = NoSuchElementException.class)
-    public void emptyQueueIterator() {
-        int capacity = 1;
-        ConcurrentMostRecentlyInsertedQueue<String> queue = new ConcurrentMostRecentlyInsertedQueue<>(capacity);
-
-        Iterator<String> iterator = queue.iterator();
-        assertNotNull(iterator);
-        assertFalse(iterator.hasNext());
-
-        iterator.next(); //must throw NoSuchElementException
+    public void testConstructor2() {
+        assertNotNull(new MostRecentlyInsertedQueue(1));
     }
 
-    @Test
-    public void queueIterator() {
-        int capacity = 2;
-        ConcurrentMostRecentlyInsertedQueue<String> queue = new ConcurrentMostRecentlyInsertedQueue<>(capacity);
-        String item1 = "first";
-        queue.offer(item1);
-        String item2 = "second";
-        queue.offer(item2);
-
-        Iterator<String> iterator = queue.iterator();
-        assertNotNull(iterator);
-
-        assertTrue(iterator.hasNext());
-        assertEquals(item1, iterator.next());
-
-        assertTrue(iterator.hasNext());
-        assertEquals(item2, iterator.next());
-
-        assertFalse(iterator.hasNext());
+    /**
+     * poll succeeds unless empty
+     */
+    public void testPoll() {
+        ConcurrentMostRecentlyInsertedQueue q = populatedQueue(SIZE);
+        for (int i = 0; i < SIZE; ++i) {
+            assertEquals(i, q.poll());
+        }
+        assertNull(q.poll());
     }
 
-    @Test
-    public void asd() {
+    /**
+     * peek returns next element, or null if empty
+     */
+    public void testPeek() {
+        ConcurrentMostRecentlyInsertedQueue q = populatedQueue(SIZE);
+        for (int i = 0; i < SIZE; ++i) {
+            assertEquals(i, q.peek());
+            assertEquals(i, q.poll());
+            assertTrue(q.peek() == null ||
+                    !q.peek().equals(i));
+        }
+        assertNull(q.peek());
+    }
 
+    /**
+     * remove removes next element, or throws NSEE if empty
+     */
+    public void testRemove() {
+        ConcurrentMostRecentlyInsertedQueue q = populatedQueue(SIZE);
+        for (int i = 0; i < SIZE; ++i) {
+            assertEquals(i, q.remove());
+        }
+        try {
+            q.remove();
+            shouldThrow();
+        } catch (NoSuchElementException success) {
+        }
+    }
+
+    /**
+     * remove(x) removes x and returns true if present
+     */
+    public void testRemoveElement() {
+        ConcurrentMostRecentlyInsertedQueue q = populatedQueue(SIZE);
+        for (int i = 1; i < SIZE; i += 2) {
+            assertTrue(q.contains(i));
+            assertTrue(q.remove(i));
+            assertFalse(q.contains(i));
+            assertTrue(q.contains(i - 1));
+        }
+        for (int i = 0; i < SIZE; i += 2) {
+            assertTrue(q.contains(i));
+            assertTrue(q.remove(i));
+            assertFalse(q.contains(i));
+            assertFalse(q.remove(i + 1));
+            assertFalse(q.contains(i + 1));
+        }
+        assertTrue(q.isEmpty());
+    }
+
+    /**
+     * clear removes all elements
+     */
+    public void testClear() {
+        ConcurrentMostRecentlyInsertedQueue q = populatedQueue(SIZE);
+        q.clear();
+        assertTrue(q.isEmpty());
+        assertEquals(0, q.size());
+        q.add(one);
+        assertFalse(q.isEmpty());
+        q.clear();
+        assertTrue(q.isEmpty());
+    }
+
+    /**
+     * removeAll(c) removes only those elements of c and reports true if changed
+     */
+    public void testRemoveAll() {
+        for (int i = 1; i < SIZE; ++i) {
+            ConcurrentMostRecentlyInsertedQueue q = populatedQueue(SIZE);
+            ConcurrentMostRecentlyInsertedQueue p = populatedQueue(i);
+            assertTrue(q.removeAll(p));
+            assertEquals(SIZE - i, q.size());
+            for (int j = 0; j < i; ++j) {
+                Integer x = (Integer) (p.remove());
+                assertFalse(q.contains(x));
+            }
+        }
+    }
+
+    /**
+     * iterator of empty collection has no elements
+     */
+    public void testEmptyIterator() {
+        assertIteratorExhausted(new ConcurrentMostRecentlyInsertedQueue(1).iterator());
+    }
+
+    /**
+     * iterator ordering is FIFO
+     */
+    public void testIteratorOrdering() {
+        final ConcurrentMostRecentlyInsertedQueue q = new ConcurrentMostRecentlyInsertedQueue(3);
+        q.add(one);
+        q.add(two);
+        q.add(three);
+
+        int k = 0;
+        for (Iterator it = q.iterator(); it.hasNext(); ) {
+            assertEquals(++k, it.next());
+        }
+
+        assertEquals(3, k);
+    }
+
+    /**
+     * Modifications do not cause iterators to fail
+     */
+    public void testWeaklyConsistentIteration() {
+        final ConcurrentMostRecentlyInsertedQueue q = new ConcurrentMostRecentlyInsertedQueue(3);
+        q.offer(one);
+        q.offer(two);
+        q.offer(three);
+
+        for (Iterator it = q.iterator(); it.hasNext(); ) {
+            q.remove();
+            it.next();
+        }
+
+        assertEquals("queue should be empty again", 0, q.size());
+    }
+
+    /**
+     * iterator.remove removes current element
+     */
+    public void testIteratorRemove() {
+        final ConcurrentMostRecentlyInsertedQueue q = new ConcurrentMostRecentlyInsertedQueue(3);
+        q.add(one);
+        q.add(two);
+        q.add(three);
+        Iterator it = q.iterator();
+        it.next();
+        it.remove();
+        it = q.iterator();
+        assertSame(it.next(), two);
+        assertSame(it.next(), three);
+        assertFalse(it.hasNext());
+    }
+
+    public void testOfferInExecutor() throws InterruptedException {
+        final ConcurrentMostRecentlyInsertedQueue<Integer> q = new ConcurrentMostRecentlyInsertedQueue<>(SIZE);
+        final CheckedBarrier threadsStarted = new CheckedBarrier(SIZE);
+        final CountDownLatch aboutToWait = new CountDownLatch(SIZE);
+        final ExecutorService executor = Executors.newFixedThreadPool(SIZE);
+
+        try (PoolCleaner cleaner = cleaner(executor)) {
+            for (int i = 0; i < SIZE; i++) {
+                final int value = i;
+                executor.execute(new CheckedRunnable() {
+                    public void realRun() {
+                        threadsStarted.await();
+                        assertTrue(q.offer(value));
+                        aboutToWait.countDown();
+                    }
+                });
+            }
+        }
+
+        aboutToWait.await();
+        assertEquals(SIZE, q.size());
+    }
+
+    public void testPollInExecutor() throws InterruptedException {
+        final ConcurrentMostRecentlyInsertedQueue<Integer> q = populatedQueue(SIZE);
+        final CheckedBarrier threadsStarted = new CheckedBarrier(SIZE);
+        final CountDownLatch pollDone = new CountDownLatch(SIZE);
+        final ExecutorService executor = Executors.newFixedThreadPool(SIZE);
+        final List<Integer> pollResults = Collections.synchronizedList(new ArrayList<Integer>());
+        try (PoolCleaner cleaner = cleaner(executor)) {
+            for (int i = 0; i < SIZE; i++) {
+                executor.execute(new CheckedRunnable() {
+                    public void realRun() {
+                        threadsStarted.await();
+                        Integer poll = q.poll();
+                        assertNotNull(poll);
+                        pollResults.add(poll);
+                        pollDone.countDown();
+                    }
+                });
+            }
+        }
+
+        pollDone.await();
+        assertEquals(0, q.size());
+        for (int i = 0; i < SIZE; i++) {
+            assertTrue(pollResults.contains(i));
+        }
+    }
+
+    public void testPeekInExecutor() throws InterruptedException {
+        final ConcurrentMostRecentlyInsertedQueue<Integer> q = populatedQueue(SIZE);
+        final CheckedBarrier threadsStarted = new CheckedBarrier(SIZE);
+        final CountDownLatch peekDone = new CountDownLatch(SIZE);
+        final ExecutorService executor = Executors.newFixedThreadPool(SIZE);
+
+        try (PoolCleaner cleaner = cleaner(executor)) {
+            for (int i = 0; i < SIZE; i++) {
+                executor.execute(new CheckedRunnable() {
+                    public void realRun() {
+                        threadsStarted.await();
+                        assertEquals((Integer) 0, q.peek());
+                        peekDone.countDown();
+                    }
+                });
+            }
+        }
+
+        peekDone.await();
+        assertEquals(SIZE, q.size());
     }
 }
