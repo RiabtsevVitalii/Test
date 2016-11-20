@@ -89,9 +89,9 @@ public class MostRecentlyInsertedBlockingQueueTest extends JSR166TestCase {
         MostRecentlyInsertedBlockingQueue q = new MostRecentlyInsertedBlockingQueue(2);
         assertTrue(q.isEmpty());
         assertEquals("should have room for 2", 2, q.remainingCapacity());
-        q.add(one);
+        q.offer(one);
         assertFalse(q.isEmpty());
-        q.add(two);
+        q.offer(two);
         assertFalse(q.isEmpty());
         assertEquals(0, q.remainingCapacity());
         assertTrue(q.offer(three));
@@ -113,7 +113,7 @@ public class MostRecentlyInsertedBlockingQueueTest extends JSR166TestCase {
         for (int i = 0; i < SIZE; ++i) {
             assertEquals(SIZE - i, q.remainingCapacity());
             assertEquals(SIZE, q.size() + q.remainingCapacity());
-            assertTrue(q.add(i));
+            assertTrue(q.offer(i));
         }
     }
 
@@ -339,7 +339,7 @@ public class MostRecentlyInsertedBlockingQueueTest extends JSR166TestCase {
         assertTrue(q.isEmpty());
         assertEquals(0, q.size());
         assertEquals(SIZE, q.remainingCapacity());
-        q.add(one);
+        q.offer(one);
         assertFalse(q.isEmpty());
         assertTrue(q.contains(one));
         q.clear();
@@ -377,9 +377,9 @@ public class MostRecentlyInsertedBlockingQueueTest extends JSR166TestCase {
      */
     public void testIteratorOrdering() {
         final MostRecentlyInsertedBlockingQueue q = new MostRecentlyInsertedBlockingQueue(3);
-        q.add(one);
-        q.add(two);
-        q.add(three);
+        q.offer(one);
+        q.offer(two);
+        q.offer(three);
         assertEquals(0, q.remainingCapacity());
         int k = 0;
         for (Iterator it = q.iterator(); it.hasNext(); ) {
@@ -393,9 +393,9 @@ public class MostRecentlyInsertedBlockingQueueTest extends JSR166TestCase {
      */
     public void testWeaklyConsistentIteration() {
         final MostRecentlyInsertedBlockingQueue q = new MostRecentlyInsertedBlockingQueue(3);
-        q.add(one);
-        q.add(two);
-        q.add(three);
+        q.offer(one);
+        q.offer(two);
+        q.offer(three);
         for (Iterator it = q.iterator(); it.hasNext(); ) {
             q.remove();
             it.next();

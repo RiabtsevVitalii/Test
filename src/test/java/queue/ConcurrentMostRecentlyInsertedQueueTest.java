@@ -144,7 +144,7 @@ public class ConcurrentMostRecentlyInsertedQueueTest extends JSR166TestCase {
         q.clear();
         assertTrue(q.isEmpty());
         assertEquals(0, q.size());
-        q.add(one);
+        q.offer(one);
         assertFalse(q.isEmpty());
         q.clear();
         assertTrue(q.isEmpty());
@@ -178,9 +178,9 @@ public class ConcurrentMostRecentlyInsertedQueueTest extends JSR166TestCase {
      */
     public void testIteratorOrdering() {
         final ConcurrentMostRecentlyInsertedQueue q = new ConcurrentMostRecentlyInsertedQueue(3);
-        q.add(one);
-        q.add(two);
-        q.add(three);
+        q.offer(one);
+        q.offer(two);
+        q.offer(three);
 
         int k = 0;
         for (Iterator it = q.iterator(); it.hasNext(); ) {
@@ -212,9 +212,9 @@ public class ConcurrentMostRecentlyInsertedQueueTest extends JSR166TestCase {
      */
     public void testIteratorRemove() {
         final ConcurrentMostRecentlyInsertedQueue q = new ConcurrentMostRecentlyInsertedQueue(3);
-        q.add(one);
-        q.add(two);
-        q.add(three);
+        q.offer(one);
+        q.offer(two);
+        q.offer(three);
         Iterator it = q.iterator();
         it.next();
         it.remove();
@@ -227,7 +227,7 @@ public class ConcurrentMostRecentlyInsertedQueueTest extends JSR166TestCase {
     public void testOfferInExecutor() throws InterruptedException {
         final ConcurrentMostRecentlyInsertedQueue<Integer> q = new ConcurrentMostRecentlyInsertedQueue<>(SIZE);
         final CheckedBarrier threadsStarted = new CheckedBarrier(SIZE);
-        final CountDownLatch aboutToWait = new CountDownLatch(SIZE);
+        final CountDownLatch offerDone = new CountDownLatch(SIZE);
         final ExecutorService executor = Executors.newFixedThreadPool(SIZE);
 
         try (PoolCleaner cleaner = cleaner(executor)) {
@@ -237,13 +237,13 @@ public class ConcurrentMostRecentlyInsertedQueueTest extends JSR166TestCase {
                     public void realRun() {
                         threadsStarted.await();
                         assertTrue(q.offer(value));
-                        aboutToWait.countDown();
+                        offerDone.countDown();
                     }
                 });
             }
         }
 
-        aboutToWait.await();
+        offerDone.await();
         assertEquals(SIZE, q.size());
     }
 
