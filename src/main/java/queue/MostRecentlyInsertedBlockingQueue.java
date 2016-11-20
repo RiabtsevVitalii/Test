@@ -10,9 +10,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * Created by VitaliiRiabtsev on 11/17/2016.
- */
 public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> implements BlockingQueue<E> {
     private static class Node<E> {
         E element;
@@ -45,14 +42,34 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
     }
 
     private E dequeue() {
-        Node<E> first = head.next; //hold first node, to make it as head of queue
+        Node<E> firstNode = head.next;
 
-        head.next = head; // remove head node from queue
-        head = first; // make first node as head of queue
-        E removedElement = first.element; //hold first element for return it
-        head.element = null; // remove first element from head
+        head.next = head;
+        head = firstNode;
+        E removedElement = firstNode.element;
+        firstNode.element = null;
 
         return removedElement;
+    }
+
+    public boolean remove(Object object) {
+        if (object == null) return false;
+        putLock.lock();
+        takeLock.lock();
+        try {
+            for (Node<E> currentNode = head, nextNode = currentNode.next;
+                 nextNode != null;
+                 currentNode = nextNode, nextNode = nextNode.next) {
+                if (object.equals(nextNode.element)) {
+                    unlink(nextNode, currentNode);
+                    return true;
+                }
+            }
+            return false;
+        } finally {
+            putLock.unlock();
+            takeLock.unlock();
+        }
     }
 
     private void signalNotEmpty() {
@@ -64,27 +81,86 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         }
     }
 
+    void unlink(Node<E> nextNode, Node<E> currentNode) {
+        nextNode.element = null;
+        currentNode.next = nextNode.next;
+        if (tail == nextNode) {
+            tail = currentNode;
+        }
+        count.getAndDecrement();
+    }
+
     private class IteratorImpl implements Iterator<E> {
         private Node<E> current;
+        private Node<E> lastRet;
+        private E currentElement;
 
         private IteratorImpl() {
-            current = head.next;
+            putLock.lock();
+            takeLock.lock();
+            try {
+                current = head.next;
+                if (current != null)
+                    currentElement = current.element;
+            } finally {
+                putLock.unlock();
+                takeLock.unlock();
+            }
         }
 
-        @Override
         public boolean hasNext() {
             return current != null;
         }
 
-        @Override
-        public E next() {
-            if (current == null) {
-                throw new NoSuchElementException();
+        private Node<E> nextNode(Node<E> currentNode) {
+            while (true) {
+                Node<E> nextNode = currentNode.next;
+                if (nextNode == currentNode)
+                    return head.next;
+                if (nextNode == null || nextNode.element != null)
+                    return nextNode;
+                currentNode = nextNode;
             }
+        }
 
-            E element = current.element;
-            current = current.next;
-            return element;
+        public E next() {
+            putLock.lock();
+            takeLock.lock();
+            try {
+                if (current == null) {
+                    throw new NoSuchElementException();
+                }
+                E element = currentElement;
+                lastRet = current;
+                current = nextNode(current);
+                currentElement = (current == null) ? null : current.element;
+                return element;
+            } finally {
+                putLock.unlock();
+                takeLock.unlock();
+            }
+        }
+
+        public void remove() {
+            if (lastRet == null)
+                throw new IllegalStateException();
+            putLock.lock();
+            takeLock.lock();
+            try {
+                Node<E> node = lastRet;
+                lastRet = null;
+                for (Node<E> currentNode = head, nextNode = currentNode.next;
+                     nextNode != null;
+                     currentNode = nextNode, nextNode = nextNode.next) {
+                    if (nextNode == node) {
+                        unlink(nextNode, currentNode);
+                        break;
+                    }
+                }
+            } finally {
+                putLock.unlock();
+                takeLock.unlock();
+            }
         }
     }
 
@@ -143,7 +219,6 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
         }
         try {
             currentCount = count.get();
-
             if (currentCount == capacity) {
                 takeLock.lockInterruptibly();
                 try {
@@ -156,7 +231,6 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
                 enqueue(node);
                 currentCount = count.incrementAndGet();
             }
-
         } finally {
             putLock.unlock();
         }
@@ -203,6 +277,7 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
             }
             removedElement = dequeue();
             int currentCount = count.decrementAndGet();
+
             if (currentCount > 0) {
                 notEmpty.signalAll();
             }

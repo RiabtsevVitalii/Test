@@ -65,7 +65,7 @@ public class MostRecentlyInsertedQueue<E> extends AbstractQueue<E> implements Qu
         }
 
         private Node<E> nextNode(Node<E> currentNode) {
-            for (; ; ) {
+            while (true) {
                 Node<E> nextNode = currentNode.next;
                 if (nextNode == currentNode) {
                     return head.next;
