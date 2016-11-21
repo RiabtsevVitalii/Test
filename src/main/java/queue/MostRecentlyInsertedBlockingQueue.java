@@ -183,21 +183,20 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
 
         putLock.lockInterruptibly();
         try {
-            currentCount = count.get();
-
-            if (currentCount == capacity) {
+            if (count.get() == capacity) {
                 takeLock.lockInterruptibly();
                 try {
-                    dequeue();
+                    if (count.get() == capacity) {
+                        dequeue();
+                        count.decrementAndGet();
+                    }
                 } finally {
                     takeLock.unlock();
                 }
-                enqueue(node);
-            } else {
-                enqueue(node);
-                currentCount = count.incrementAndGet();
             }
 
+            enqueue(node);
+            currentCount = count.incrementAndGet();
         } finally {
             putLock.unlock();
         }
@@ -218,19 +217,19 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
             return false;
         }
         try {
-            currentCount = count.get();
-            if (currentCount == capacity) {
+            if (count.get() == capacity) {
                 takeLock.lockInterruptibly();
                 try {
-                    dequeue();
+                    if (count.get() == capacity) {
+                        dequeue();
+                        count.decrementAndGet();
+                    }
                 } finally {
                     takeLock.unlock();
                 }
-                enqueue(node);
-            } else {
-                enqueue(node);
-                currentCount = count.incrementAndGet();
             }
+            enqueue(node);
+            currentCount = count.incrementAndGet();
         } finally {
             putLock.unlock();
         }
@@ -336,23 +335,22 @@ public class MostRecentlyInsertedBlockingQueue<E> extends AbstractQueue<E> imple
 
         int currentCount = -1;
         Node<E> node = new Node<>(element);
+
         putLock.lock();
         try {
-            currentCount = count.get();
-
-            if (currentCount == capacity) {
+            if (count.get() == capacity) {
                 takeLock.lock();
                 try {
-                    dequeue();
+                    if (count.get() == capacity) {
+                        dequeue();
+                        count.decrementAndGet();
+                    }
                 } finally {
                     takeLock.unlock();
                 }
-                enqueue(node);
-            } else {
-                enqueue(node);
-                currentCount = count.incrementAndGet();
             }
-
+            enqueue(node);
+            currentCount = count.incrementAndGet();
         } finally {
             putLock.unlock();
         }
